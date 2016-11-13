@@ -113,6 +113,8 @@ static void signal_cb(EV_P_ ev_signal *w, int revents);
 
 static int create_and_bind(const char *addr, const char *port);
 static remote_t *create_remote(listen_ctx_t *listener, struct sockaddr *addr);
+static void prepend_userid(buffer_t *buf, uint32_t user_id);
+static uint32_t to_bigendian(uint32_t num);
 static void free_remote(remote_t *remote);
 static void close_and_free_remote(EV_P_ remote_t *remote);
 static void free_server(server_t *server);
@@ -258,13 +260,20 @@ server_recv_cb(EV_P_ ev_io *w, int revents)
 #ifdef ANDROID
                 tx += remote->buf->len;
 #endif
+                int before_enc_len = remote->buf->len;
                 int err = ss_encrypt(remote->buf, server->e_ctx, BUF_SIZE);
-
+                int after_enc_len = remote->buf->len;
                 if (err) {
                     LOGE("invalid password or cipher");
                     close_and_free_remote(EV_A_ remote);
                     close_and_free_server(EV_A_ server);
                     return;
+                }
+                // If before_enc_len is less than after_enc_len, that mean
+                // ss_encrypt function add IV data on head of buffer, and this
+                // also mean we can prepend user_id to this buffer.
+                if (auth && before_enc_len < after_enc_len) {
+                    prepend_userid(remote->buf, server->listener->user_id);
                 }
             }
 
@@ -688,6 +697,31 @@ server_recv_cb(EV_P_ ev_io *w, int revents)
             bfree(abuf);
         }
     }
+}
+
+static void
+prepend_userid(buffer_t* buf, uint32_t user_id)
+{
+    unsigned char nbuffer[BUF_SIZE];
+    memset(nbuffer, 0, BUF_SIZE);
+    // Change little endian to big endian
+    uint32_t user_id_be = to_bigendian(user_id);
+    memcpy(nbuffer, (char*)(&user_id_be), 4);
+    // Append data after user_id;
+    memcpy(nbuffer + 4, (char*)(buf->array), buf->len);
+    buf->len += 4;
+    memcpy((char*)(buf->array), nbuffer, buf->len);
+}
+
+
+static uint32_t
+to_bigendian(uint32_t num)
+{
+    uint32_t swapped = ((num>>24)&0xff) | // move byte 3 to byte 0
+                       ((num<<8)&0xff0000) | // move byte 1 to byte 2
+                       ((num>>8)&0xff00) | // move byte 2 to byte 1
+                       ((num<<24)&0xff000000); // byte 0 to byte 3
+    return swapped;
 }
 
 static void
@@ -1134,6 +1168,7 @@ main(int argc, char **argv)
     char *pid_path   = NULL;
     char *conf_path  = NULL;
     char *iface      = NULL;
+    char *user_id    = NULL;
 
     srand(time(NULL));
 
@@ -1156,10 +1191,10 @@ main(int argc, char **argv)
     USE_TTY();
 
 #ifdef ANDROID
-    while ((c = getopt_long(argc, argv, "f:s:p:l:k:t:m:i:c:b:a:n:P:huUvVA6",
+    while ((c = getopt_long(argc, argv, "f:o:s:p:l:k:t:m:i:c:b:a:n:P:huUvVA6",
                             long_options, &option_index)) != -1) {
 #else
-    while ((c = getopt_long(argc, argv, "f:s:p:l:k:t:m:i:c:b:a:n:huUvA6",
+    while ((c = getopt_long(argc, argv, "f:o:s:p:l:k:t:m:i:c:b:a:n:huUvA6",
                             long_options, &option_index)) != -1) {
 #endif
         switch (c) {
@@ -1188,6 +1223,9 @@ main(int argc, char **argv)
             break;
         case 'p':
             remote_port = optarg;
+            break;
+        case 'o':
+            user_id = optarg;
             break;
         case 'l':
             local_port = optarg;
@@ -1314,7 +1352,7 @@ main(int argc, char **argv)
     }
 
     if (remote_num == 0 || remote_port == NULL ||
-        local_port == NULL || password == NULL) {
+        local_port == NULL || password == NULL || user_id == NULL) {
         usage();
         exit(EXIT_FAILURE);
     }
@@ -1398,6 +1436,7 @@ main(int argc, char **argv)
     listen_ctx.iface   = iface;
     listen_ctx.method  = m;
     listen_ctx.mptcp   = mptcp;
+    listen_ctx.user_id = (uint32_t)atoi(user_id);
 
     // Setup signal handler
     struct ev_signal sigint_watcher;

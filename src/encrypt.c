@@ -1081,8 +1081,8 @@ ss_encrypt(buffer_t *plain, enc_ctx_t *ctx, size_t capacity)
         }
 
 #ifdef DEBUG
-        dump("PLAIN", plain->array, plain->len);
-        dump("CIPHER", cipher->array + iv_len, cipher->len);
+//        dump("PLAIN", plain->array, plain->len);
+//        dump("CIPHER", cipher->array + iv_len, cipher->len);
 #endif
 
         brealloc(plain, iv_len + cipher->len, capacity);

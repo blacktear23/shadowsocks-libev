@@ -41,6 +41,7 @@ typedef struct listen_ctx {
     int fd;
     int mptcp;
     struct sockaddr **remote_addr;
+    uint32_t user_id;
 } listen_ctx_t;
 
 typedef struct server_ctx {
