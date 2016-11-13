@@ -717,11 +717,20 @@ prepend_userid(buffer_t* buf, uint32_t user_id)
 static uint32_t
 to_bigendian(uint32_t num)
 {
-    uint32_t swapped = ((num>>24)&0xff) | // move byte 3 to byte 0
-                       ((num<<8)&0xff0000) | // move byte 1 to byte 2
-                       ((num>>8)&0xff00) | // move byte 2 to byte 1
-                       ((num<<24)&0xff000000); // byte 0 to byte 3
-    return swapped;
+    union {
+       uint32_t word;
+       uint8_t bytes[4];
+    } test_struct;
+    test_struct.word = 0x1;
+
+    if (test_struct.bytes[0] != 0) {
+        uint32_t swapped = ((num>>24)&0xff) | // move byte 3 to byte 0
+                           ((num<<8)&0xff0000) | // move byte 1 to byte 2
+                           ((num>>8)&0xff00) | // move byte 2 to byte 1
+                           ((num<<24)&0xff000000); // byte 0 to byte 3
+        return swapped;
+    }
+    return num;
 }
 
 static void
