@@ -237,6 +237,10 @@ usage()
         "       -p <server_port>           Port number of your remote server.\n");
     printf(
         "       -l <local_port>            Port number of your local server.\n");
+#ifdef MODULE_LOCAL
+    printf(
+        "       -o <user_id>               User ID for remote server.\n");
+#endif
     printf(
         "       -k <password>              Password of your remote server.\n");
     printf(
