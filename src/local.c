@@ -1191,10 +1191,10 @@ main(int argc, char **argv)
     USE_TTY();
 
 #ifdef ANDROID
-    while ((c = getopt_long(argc, argv, "f:o:s:p:l:k:t:m:i:c:b:a:n:P:huUvVA6",
+    while ((c = getopt_long(argc, argv, "f:I:s:p:l:k:t:m:i:c:b:a:n:P:huUvVA6",
                             long_options, &option_index)) != -1) {
 #else
-    while ((c = getopt_long(argc, argv, "f:o:s:p:l:k:t:m:i:c:b:a:n:huUvA6",
+    while ((c = getopt_long(argc, argv, "f:I:s:p:l:k:t:m:i:c:b:a:n:huUvA6",
                             long_options, &option_index)) != -1) {
 #endif
         switch (c) {
@@ -1224,7 +1224,7 @@ main(int argc, char **argv)
         case 'p':
             remote_port = optarg;
             break;
-        case 'o':
+        case 'I':
             user_id = optarg;
             break;
         case 'l':
@@ -1352,13 +1352,14 @@ main(int argc, char **argv)
     }
 
     if (remote_num == 0 || remote_port == NULL ||
-        local_port == NULL || password == NULL || user_id == NULL) {
+        local_port == NULL || password == NULL ||
+        user_id == NULL) {
         usage();
         exit(EXIT_FAILURE);
     }
 
     if (method == NULL) {
-        method = "rc4-md5";
+        method = "aes-128-cfb";
     }
 
     if (timeout == NULL) {
