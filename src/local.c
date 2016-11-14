@@ -241,7 +241,6 @@ server_recv_cb(EV_P_ ev_io *w, int revents)
     }
 
     buf->len += r;
-
     while (1) {
         // local socks5 server
         if (server->stage == 5) {
@@ -260,9 +259,7 @@ server_recv_cb(EV_P_ ev_io *w, int revents)
 #ifdef ANDROID
                 tx += remote->buf->len;
 #endif
-                int before_enc_len = remote->buf->len;
                 int err = ss_encrypt(remote->buf, server->e_ctx, BUF_SIZE);
-                int after_enc_len = remote->buf->len;
                 if (err) {
                     LOGE("invalid password or cipher");
                     close_and_free_remote(EV_A_ remote);
@@ -272,8 +269,9 @@ server_recv_cb(EV_P_ ev_io *w, int revents)
                 // If before_enc_len is less than after_enc_len, that mean
                 // ss_encrypt function add IV data on head of buffer, and this
                 // also mean we can prepend user_id to this buffer.
-                if (auth && before_enc_len < after_enc_len) {
+                if (auth && remote->first_packet) {
                     prepend_userid(remote->buf, server->listener->user_id);
+                    remote->first_packet = 0;
                 }
             }
 
@@ -954,6 +952,7 @@ new_remote(int fd, int timeout)
     remote->fd                  = fd;
     remote->recv_ctx->remote    = remote;
     remote->send_ctx->remote    = remote;
+    remote->first_packet        = 1;
 
     ev_io_init(&remote->recv_ctx->io, remote_recv_cb, fd, EV_READ);
     ev_io_init(&remote->send_ctx->io, remote_send_cb, fd, EV_WRITE);

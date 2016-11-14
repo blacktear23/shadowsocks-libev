@@ -82,6 +82,7 @@ typedef struct remote {
     struct sockaddr_storage addr;
     int addr_len;
     uint32_t counter;
+    uint8_t first_packet;
 } remote_t;
 
 #endif // _LOCAL_H
