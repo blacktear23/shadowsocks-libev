@@ -80,6 +80,10 @@
 #define EWOULDBLOCK EAGAIN
 #endif
 
+#ifndef UDPBUF_SIZE
+#define UDPBUF_SIZE 4096
+#endif
+
 static void server_recv_cb(EV_P_ ev_io *w, int revents);
 static void remote_recv_cb(EV_P_ ev_io *w, int revents);
 static void remote_timeout_cb(EV_P_ ev_timer *watcher, int revents);
@@ -90,6 +94,7 @@ static void query_resolve_cb(struct sockaddr *addr, void *data);
 #endif
 static void close_and_free_remote(EV_P_ remote_ctx_t *ctx);
 static remote_ctx_t *new_remote(int fd, server_ctx_t *server_ctx);
+void udp_prepend_userid(buffer_t *buf, uint32_t user_id);
 
 #ifdef ANDROID
 extern uint64_t tx;
@@ -1173,6 +1178,10 @@ server_recv_cb(EV_P_ ev_io *w, int revents)
         goto CLEAN_UP;
     }
 
+    if (server_ctx->user_id > 0) {
+        udp_prepend_userid(buf, server_ctx->user_id);
+    }
+
     if (buf->len > packet_size) {
         LOGE("[udp] server_recv_sendto fragmentation");
         goto CLEAN_UP;
@@ -1316,7 +1325,7 @@ init_udprelay(const char *server_host, const char *server_port,
               const ss_addr_t tunnel_addr,
 #endif
 #endif
-              int mtu, int method, int auth, int timeout, const char *iface)
+              int mtu, int method, int auth, int timeout, const char *iface, uint32_t user_id)
 {
     // Initialize ev loop
     struct ev_loop *loop = EV_DEFAULT;
@@ -1342,6 +1351,7 @@ init_udprelay(const char *server_host, const char *server_port,
     setnonblocking(serverfd);
 
     server_ctx_t *server_ctx = new_server_ctx(serverfd);
+    server_ctx->user_id = user_id;
 #ifdef MODULE_REMOTE
     server_ctx->loop = loop;
 #endif
@@ -1377,4 +1387,18 @@ free_udprelay()
         ss_free(server_ctx);
         server_ctx_list[server_num] = NULL;
     }
+}
+
+void
+udp_prepend_userid(buffer_t* buf, uint32_t user_id)
+{
+    unsigned char nbuffer[UDPBUF_SIZE];
+    memset(nbuffer, 0, UDPBUF_SIZE);
+    // Change little endian to big endian
+    uint32_t user_id_be = to_bigendian(user_id);
+    memcpy(nbuffer, (char*)(&user_id_be), 4);
+    // Append data after user_id;
+    memcpy(nbuffer + 4, (char*)(buf->array), buf->len);
+    buf->len += 4;
+    memcpy((char*)(buf->array), nbuffer, buf->len);
 }

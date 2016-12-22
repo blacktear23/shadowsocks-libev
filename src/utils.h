@@ -220,6 +220,7 @@ int set_nofile(int nofile);
 
 void *ss_malloc(size_t size);
 void *ss_realloc(void *ptr, size_t new_size);
+uint32_t to_bigendian(uint32_t num);
 
 #define ss_free(ptr)     \
     do {                 \

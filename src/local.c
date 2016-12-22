@@ -114,7 +114,6 @@ static void signal_cb(EV_P_ ev_signal *w, int revents);
 static int create_and_bind(const char *addr, const char *port);
 static remote_t *create_remote(listen_ctx_t *listener, struct sockaddr *addr);
 static void prepend_userid(buffer_t *buf, uint32_t user_id);
-static uint32_t to_bigendian(uint32_t num);
 static void free_remote(remote_t *remote);
 static void close_and_free_remote(EV_P_ remote_t *remote);
 static void free_server(server_t *server);
@@ -711,25 +710,6 @@ prepend_userid(buffer_t* buf, uint32_t user_id)
     memcpy((char*)(buf->array), nbuffer, buf->len);
 }
 
-
-static uint32_t
-to_bigendian(uint32_t num)
-{
-    union {
-       uint32_t word;
-       uint8_t bytes[4];
-    } test_struct;
-    test_struct.word = 0x1;
-
-    if (test_struct.bytes[0] != 0) {
-        uint32_t swapped = ((num>>24)&0xff) | // move byte 3 to byte 0
-                           ((num<<8)&0xff0000) | // move byte 1 to byte 2
-                           ((num>>8)&0xff00) | // move byte 2 to byte 1
-                           ((num<<24)&0xff000000); // byte 0 to byte 3
-        return swapped;
-    }
-    return num;
-}
 
 static void
 server_send_cb(EV_P_ ev_io *w, int revents)
@@ -1479,7 +1459,7 @@ main(int argc, char **argv)
     if (mode != TCP_ONLY) {
         LOGI("udprelay enabled");
         init_udprelay(local_addr, local_port, listen_ctx.remote_addr[0],
-                      get_sockaddr_len(listen_ctx.remote_addr[0]), mtu, m, auth, listen_ctx.timeout, iface);
+                      get_sockaddr_len(listen_ctx.remote_addr[0]), mtu, m, auth, listen_ctx.timeout, iface, listen_ctx.user_id);
     }
 
     if (strcmp(local_addr, ":") > 0)
@@ -1634,7 +1614,7 @@ start_ss_local_server(profile_t profile)
         LOGI("udprelay enabled");
         struct sockaddr *addr = (struct sockaddr *)storage;
         init_udprelay(local_addr, local_port_str, addr,
-                      get_sockaddr_len(addr), mtu, m, auth, timeout, NULL);
+                      get_sockaddr_len(addr), mtu, m, auth, timeout, NULL, 0);
     }
 
     if (strcmp(local_addr, ":") > 0)

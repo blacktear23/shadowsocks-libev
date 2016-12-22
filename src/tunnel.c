@@ -1018,7 +1018,7 @@ main(int argc, char **argv)
         LOGI("UDP relay enabled");
         init_udprelay(local_addr, local_port, listen_ctx.remote_addr[0],
                       get_sockaddr_len(listen_ctx.remote_addr[0]),
-                      tunnel_addr, mtu, m, auth, listen_ctx.timeout, iface);
+                      tunnel_addr, mtu, m, auth, listen_ctx.timeout, iface, 0);
     }
 
     if (mode == UDP_ONLY) {

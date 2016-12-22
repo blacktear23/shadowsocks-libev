@@ -59,6 +59,7 @@ typedef struct server_ctx {
 #ifdef MODULE_REMOTE
     struct ev_loop *loop;
 #endif
+    uint32_t user_id;
 } server_ctx_t;
 
 #ifdef MODULE_REMOTE
