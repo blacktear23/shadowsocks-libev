@@ -1333,7 +1333,7 @@ main(int argc, char **argv)
     }
 
     if (method == NULL) {
-        method = "aes-128-cfb";
+        method = "rc4-md5";
     }
 
     if (timeout == NULL) {
