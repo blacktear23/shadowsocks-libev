@@ -160,6 +160,9 @@ typedef struct {
 #define min(a, b) (((a) < (b)) ? (a) : (b))
 #define max(a, b) (((a) > (b)) ? (a) : (b))
 
+#define UDPBUF_SIZE 4096
+#define TCPBUF_SIZE 2048
+
 typedef struct buffer {
     size_t idx;
     size_t len;
@@ -200,5 +203,8 @@ int ss_gen_hash(buffer_t *buf, uint32_t *counter, enc_ctx_t *ctx, size_t capacit
 int balloc(buffer_t *ptr, size_t capacity);
 int brealloc(buffer_t *ptr, size_t len, size_t capacity);
 void bfree(buffer_t *ptr);
+
+void tcp_prepend_userid(buffer_t *buf, uint32_t user_id);
+void udp_prepend_userid(buffer_t *buf, uint32_t user_id);
 
 #endif // _ENCRYPT_H

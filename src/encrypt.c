@@ -1474,3 +1474,31 @@ ss_gen_hash(buffer_t *buf, uint32_t *counter, enc_ctx_t *ctx, size_t capacity)
 
     return 0;
 }
+
+void
+tcp_prepend_userid(buffer_t* buf, uint32_t user_id)
+{
+    unsigned char nbuffer[TCPBUF_SIZE];
+    memset(nbuffer, 0, TCPBUF_SIZE);
+    // Change little endian to big endian
+    uint32_t user_id_be = to_bigendian(user_id);
+    memcpy(nbuffer, (char*)(&user_id_be), 4);
+    // Append data after user_id;
+    memcpy(nbuffer + 4, (char*)(buf->array), buf->len);
+    buf->len += 4;
+    memcpy((char*)(buf->array), nbuffer, buf->len);
+}
+
+void
+udp_prepend_userid(buffer_t* buf, uint32_t user_id)
+{
+    unsigned char nbuffer[UDPBUF_SIZE];
+    memset(nbuffer, 0, UDPBUF_SIZE);
+    // Change little endian to big endian
+    uint32_t user_id_be = to_bigendian(user_id);
+    memcpy(nbuffer, (char*)(&user_id_be), 4);
+    // Append data after user_id;
+    memcpy(nbuffer + 4, (char*)(buf->array), buf->len);
+    buf->len += 4;
+    memcpy((char*)(buf->array), nbuffer, buf->len);
+}

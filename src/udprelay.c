@@ -80,9 +80,6 @@
 #define EWOULDBLOCK EAGAIN
 #endif
 
-#ifndef UDPBUF_SIZE
-#define UDPBUF_SIZE 4096
-#endif
 
 static void server_recv_cb(EV_P_ ev_io *w, int revents);
 static void remote_recv_cb(EV_P_ ev_io *w, int revents);
@@ -94,7 +91,6 @@ static void query_resolve_cb(struct sockaddr *addr, void *data);
 #endif
 static void close_and_free_remote(EV_P_ remote_ctx_t *ctx);
 static remote_ctx_t *new_remote(int fd, server_ctx_t *server_ctx);
-void udp_prepend_userid(buffer_t *buf, uint32_t user_id);
 
 #ifdef ANDROID
 extern uint64_t tx;
@@ -1356,6 +1352,7 @@ init_udprelay(const char *server_host, const char *server_port,
     server_ctx->loop = loop;
 #endif
     server_ctx->auth       = auth;
+    // server_ctx->auth       = 0;
     server_ctx->timeout    = max(timeout, MIN_UDP_TIMEOUT);
     server_ctx->method     = method;
     server_ctx->iface      = iface;
@@ -1387,18 +1384,4 @@ free_udprelay()
         ss_free(server_ctx);
         server_ctx_list[server_num] = NULL;
     }
-}
-
-void
-udp_prepend_userid(buffer_t* buf, uint32_t user_id)
-{
-    unsigned char nbuffer[UDPBUF_SIZE];
-    memset(nbuffer, 0, UDPBUF_SIZE);
-    // Change little endian to big endian
-    uint32_t user_id_be = to_bigendian(user_id);
-    memcpy(nbuffer, (char*)(&user_id_be), 4);
-    // Append data after user_id;
-    memcpy(nbuffer + 4, (char*)(buf->array), buf->len);
-    buf->len += 4;
-    memcpy((char*)(buf->array), nbuffer, buf->len);
 }

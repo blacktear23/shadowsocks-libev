@@ -113,7 +113,6 @@ static void signal_cb(EV_P_ ev_signal *w, int revents);
 
 static int create_and_bind(const char *addr, const char *port);
 static remote_t *create_remote(listen_ctx_t *listener, struct sockaddr *addr);
-static void prepend_userid(buffer_t *buf, uint32_t user_id);
 static void free_remote(remote_t *remote);
 static void close_and_free_remote(EV_P_ remote_t *remote);
 static void free_server(server_t *server);
@@ -269,7 +268,7 @@ server_recv_cb(EV_P_ ev_io *w, int revents)
                 // ss_encrypt function add IV data on head of buffer, and this
                 // also mean we can prepend user_id to this buffer.
                 if (auth && remote->first_packet) {
-                    prepend_userid(remote->buf, server->listener->user_id);
+                    tcp_prepend_userid(remote->buf, server->listener->user_id);
                     remote->first_packet = 0;
                 }
             }
@@ -696,19 +695,6 @@ server_recv_cb(EV_P_ ev_io *w, int revents)
     }
 }
 
-static void
-prepend_userid(buffer_t* buf, uint32_t user_id)
-{
-    unsigned char nbuffer[BUF_SIZE];
-    memset(nbuffer, 0, BUF_SIZE);
-    // Change little endian to big endian
-    uint32_t user_id_be = to_bigendian(user_id);
-    memcpy(nbuffer, (char*)(&user_id_be), 4);
-    // Append data after user_id;
-    memcpy(nbuffer + 4, (char*)(buf->array), buf->len);
-    buf->len += 4;
-    memcpy((char*)(buf->array), nbuffer, buf->len);
-}
 
 
 static void

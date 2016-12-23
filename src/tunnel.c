@@ -214,6 +214,11 @@ server_recv_cb(EV_P_ ev_io *w, int revents)
         return;
     }
 
+    if (auth && remote->first_packet) {
+        tcp_prepend_userid(remote->buf, server->listener->user_id);
+        remote->first_packet = 0;
+    }
+
     int s = send(remote->fd, remote->buf->array, remote->buf->len, 0);
 
     if (s == -1) {
@@ -512,6 +517,7 @@ new_remote(int fd, int timeout)
     remote->recv_ctx->connected = 0;
     remote->send_ctx->remote    = remote;
     remote->send_ctx->connected = 0;
+    remote->first_packet        = 1;
 
     ev_io_init(&remote->recv_ctx->io, remote_recv_cb, fd, EV_READ);
     ev_io_init(&remote->send_ctx->io, remote_send_cb, fd, EV_WRITE);
@@ -689,6 +695,7 @@ accept_cb(EV_P_ ev_io *w, int revents)
     remote_t *remote = new_remote(remotefd, listener->timeout);
     server->destaddr = listener->tunnel_addr;
     server->remote   = remote;
+    server->listener = listener;
     remote->server   = server;
 
     int r = connect(remotefd, remote_addr, get_sockaddr_len(remote_addr));
@@ -730,6 +737,7 @@ main(int argc, char **argv)
     char *pid_path   = NULL;
     char *conf_path  = NULL;
     char *iface      = NULL;
+    char *user_id    = NULL;
 
     int remote_num = 0;
     ss_addr_t remote_addr[MAX_REMOTE_NUM];
@@ -751,10 +759,10 @@ main(int argc, char **argv)
     USE_TTY();
 
 #ifdef ANDROID
-    while ((c = getopt_long(argc, argv, "f:s:p:l:k:t:m:i:c:b:L:a:n:P:huUvVA6",
+    while ((c = getopt_long(argc, argv, "f:I:s:p:l:k:t:m:i:c:b:L:a:n:P:huUvVA6",
                             long_options, &option_index)) != -1) {
 #else
-    while ((c = getopt_long(argc, argv, "f:s:p:l:k:t:m:i:c:b:L:a:n:huUvA6",
+    while ((c = getopt_long(argc, argv, "f:I:s:p:l:k:t:m:i:c:b:L:a:n:huUvA6",
                             long_options, &option_index)) != -1) {
 #endif
         switch (c) {
@@ -778,6 +786,9 @@ main(int argc, char **argv)
             break;
         case 'p':
             remote_port = optarg;
+            break;
+        case 'I':
+            user_id = optarg;
             break;
         case 'l':
             local_port = optarg;
@@ -908,13 +919,13 @@ main(int argc, char **argv)
     }
 
     if (remote_num == 0 || remote_port == NULL || tunnel_addr_str == NULL ||
-        local_port == NULL || password == NULL) {
+        local_port == NULL || password == NULL || user_id == NULL) {
         usage();
         exit(EXIT_FAILURE);
     }
 
     if (method == NULL) {
-        method = "rc4-md5";
+        method = "aes-128-cfb";
     }
 
     if (timeout == NULL) {
@@ -992,6 +1003,7 @@ main(int argc, char **argv)
     listen_ctx.iface   = iface;
     listen_ctx.method  = m;
     listen_ctx.mptcp   = mptcp;
+    listen_ctx.user_id = (uint32_t)atoi(user_id);
 
     struct ev_loop *loop = EV_DEFAULT;
 
@@ -1018,7 +1030,7 @@ main(int argc, char **argv)
         LOGI("UDP relay enabled");
         init_udprelay(local_addr, local_port, listen_ctx.remote_addr[0],
                       get_sockaddr_len(listen_ctx.remote_addr[0]),
-                      tunnel_addr, mtu, m, auth, listen_ctx.timeout, iface, 0);
+                      tunnel_addr, mtu, m, auth, listen_ctx.timeout, iface, listen_ctx.user_id);
     }
 
     if (mode == UDP_ONLY) {

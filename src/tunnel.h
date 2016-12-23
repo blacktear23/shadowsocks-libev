@@ -39,6 +39,7 @@ typedef struct listen_ctx {
     int fd;
     int mptcp;
     struct sockaddr **remote_addr;
+    uint32_t user_id;
 } listen_ctx_t;
 
 typedef struct server_ctx {
@@ -54,6 +55,7 @@ typedef struct server {
     struct enc_ctx *d_ctx;
     struct server_ctx *recv_ctx;
     struct server_ctx *send_ctx;
+    struct listen_ctx *listener;
     struct remote *remote;
     ss_addr_t destaddr;
 } server_t;
@@ -72,6 +74,7 @@ typedef struct remote {
     struct remote_ctx *send_ctx;
     struct server *server;
     uint32_t counter;
+    uint8_t first_packet;
 } remote_t;
 
 #endif // _TUNNEL_H
