@@ -240,6 +240,12 @@ usage()
 #ifdef MODULE_LOCAL
     printf(
         "       -I <user_id>               User ID for remote server.\n");
+#elif MODULE_TUNNEL
+    printf(
+        "       -I <user_id>               User ID for remote server.\n");
+#elif MODULE_REDIR
+    printf(
+        "       -I <user_id>               User ID for remote server.\n");
 #endif
     printf(
         "       -k <password>              Password of your remote server.\n");
